@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Sparkles, Download, Copy, Hash, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { toPng } from "html-to-image";
 import placeholderPost from "@/assets/placeholder-post.jpg";
 
 const MOCK_CAPTION = `🎉 PROMOÇÃO DE PÁSCOA! 🐣✨
@@ -19,9 +20,7 @@ Não perca essa oportunidade de presentear quem você ama (e a si mesmo também,
 
 👉 Acesse o link na bio e garanta o seu!
 
-⏰ Promoção válida até 20/04
-
-`;
+⏰ Promoção válida até 20/04`;
 
 const MOCK_HASHTAGS = `#Pascoa2025 #PromoçãoDePáscoa #Desconto #FretGratis #Oferta #Empreendedorismo #PequenosNegócios #LojaOnline #Chocolate #PáscoaFeliz`;
 
@@ -29,6 +28,8 @@ export default function CreatePost() {
   const [idea, setIdea] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ image: string; caption: string; hashtags: string } | null>(null);
+  
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const handleGenerate = () => {
     if (!idea.trim()) {
@@ -39,10 +40,33 @@ export default function CreatePost() {
     setLoading(true);
     setResult(null);
 
+    // Simulando a geração da IA
     setTimeout(() => {
       setResult({ image: placeholderPost, caption: MOCK_CAPTION, hashtags: MOCK_HASHTAGS });
       setLoading(false);
     }, 2500);
+  };
+
+  const handleDownloadImage = async () => {
+    if (cardRef.current === null) return;
+
+    try {
+      // Pequena pausa para garantir que o DOM está pronto
+      const dataUrl = await toPng(cardRef.current, { 
+        cacheBust: true,
+        backgroundColor: '#000',
+        pixelRatio: 2, // Aumenta a qualidade da imagem baixada
+      });
+      
+      const link = document.createElement('a');
+      link.download = `meu-post-magico-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast.success("Download iniciado!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar a imagem. Tente novamente.");
+    }
   };
 
   const copyText = (text: string, label: string) => {
@@ -97,9 +121,6 @@ export default function CreatePost() {
           <div className="bg-card rounded-xl shadow-card p-5 border border-border space-y-3">
             <div className="h-4 w-3/4 rounded animate-shimmer" />
             <div className="h-4 w-full rounded animate-shimmer" />
-            <div className="h-4 w-5/6 rounded animate-shimmer" />
-            <div className="h-4 w-2/3 rounded animate-shimmer" />
-            <div className="h-4 w-full rounded animate-shimmer" />
             <div className="h-4 w-1/2 rounded animate-shimmer" />
           </div>
         </div>
@@ -108,32 +129,47 @@ export default function CreatePost() {
       {result && !loading && (
         <div className="grid md:grid-cols-2 gap-6 animate-fade-in-up">
           <div className="bg-card rounded-xl shadow-card p-5 border border-border space-y-4">
-            <h2 className="text-sm font-semibold text-foreground">📸 Imagem do Post</h2>
-            <img
-              src={result.image}
-              alt="Post gerado"
-              className="w-full aspect-square object-cover rounded-lg"
-              loading="lazy"
-              width={1024}
-              height={1024}
-            />
+            <h2 className="text-sm font-semibold text-foreground">📸 Visual do Post</h2>
+            
+            {/* CARD MÁGICO */}
+            <div 
+              ref={cardRef} 
+              className="relative aspect-square w-full rounded-lg overflow-hidden bg-black shadow-lg"
+            >
+              <img
+                src={result.image}
+                alt="Post gerado"
+                className="w-full h-full object-cover"
+                crossOrigin="anonymous"
+              />
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-8 text-center">
+                <p className="text-blue-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-3 drop-shadow-md">
+                  Caption Magic AI
+                </p>
+                <h3 className="text-white text-lg md:text-xl font-bold leading-tight drop-shadow-lg break-words">
+                  {idea || "Sua ideia aparecerá aqui no card..."}
+                </h3>
+              </div>
+            </div>
+
             <Button
               type="button"
               variant="outline"
               className="w-full border-border text-foreground hover:bg-secondary"
-              onClick={() => toast.success("Download iniciado!")}
+              onClick={handleDownloadImage}
             >
               <Download className="mr-2 h-4 w-4" />
-              Baixar Imagem
+              Baixar Imagem com Legenda
             </Button>
           </div>
 
           <div className="bg-card rounded-xl shadow-card p-5 border border-border space-y-4">
-            <h2 className="text-sm font-semibold text-foreground">📝 Legenda</h2>
-            <div className="bg-secondary/50 rounded-lg p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-[400px] overflow-y-auto">
+            <h2 className="text-sm font-semibold text-foreground">📝 Legenda & Hashtags</h2>
+            <div className="bg-secondary/50 rounded-lg p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
               {result.caption}
             </div>
-            <div className="bg-muted rounded-lg p-3 text-xs text-muted-foreground">
+            <div className="bg-muted rounded-lg p-3 text-xs text-muted-foreground break-words">
               {result.hashtags}
             </div>
             <div className="flex gap-2">
